@@ -1,0 +1,41 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user usage and subscription data.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "credits": { "type": "integer" },
+        "plan": { "type": "string", "enum": ["free", "pro", "elite"] },
+        "lastCreditReset": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "credits", "plan"]
+    },
+    "GeneratedImage": {
+      "title": "Generated Image",
+      "description": "Metadata for an AI-generated image.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "prompt": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "aspectRatio": { "type": "string" },
+        "style": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "prompt", "imageUrl", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Private user profiles containing credits and plans."
+    },
+    "/images/{imageId}": {
+      "schema": "GeneratedImage",
+      "description": "Public gallery of generated images."
+    }
+  }
+}

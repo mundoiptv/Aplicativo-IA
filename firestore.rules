@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- User Profiles ---
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      
+      function isValidUserProfile(data) {
+        return data.keys().hasAll(['uid', 'credits', 'plan', 'updatedAt']) 
+          && data.keys().size() == 4
+          && data.uid == request.auth.uid
+          && data.credits is int
+          && data.plan in ['free', 'pro', 'elite']
+          && data.updatedAt == request.time;
+      }
+
+      allow create: if isOwner(userId) && isValidUserProfile(incoming());
+      
+      allow update: if isOwner(userId) 
+        && isValidUserProfile(incoming())
+        && (
+          // Plan Upgrade Action (simulated payment)
+          incoming().diff(existing()).affectedKeys().hasOnly(['plan', 'credits', 'updatedAt'])
+          ||
+          // Credit consumption
+          incoming().diff(existing()).affectedKeys().hasOnly(['credits', 'updatedAt'])
+        );
+    }
+
+    // --- Generated Images ---
+    match /images/{imageId} {
+      allow list: if true; // Public gallery
+      allow get: if true;
+
+      function isValidImage(data) {
+        return data.keys().hasAll(['userId', 'prompt', 'imageUrl', 'createdAt', 'aspectRatio', 'style'])
+          && data.keys().size() == 6
+          && data.userId == request.auth.uid
+          && data.prompt is string && data.prompt.size() <= 1000
+          && data.imageUrl is string && data.imageUrl.size() <= 1048576 // Limit to 1MB total document size (inc. base64)
+          && data.createdAt == request.time;
+      }
+
+      allow create: if isSignedIn() 
+        && isValidId(imageId)
+        && isValidImage(incoming())
+        // Enforce that user has credits (relational check)
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.credits > 0;
+        
+      allow delete: if isSignedIn() && isOwner(existing().userId);
+    }
+  }
+}

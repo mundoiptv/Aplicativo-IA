@@ -1,0 +1,6 @@
+{
+  "name": "Visionary AI - Image Generator",
+  "description": "Powerful AI-driven image generation with credit-based subscription plans.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": []
+}
